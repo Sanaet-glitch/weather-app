@@ -1,0 +1,35 @@
+# General
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE specific
+.vscode/
+.idea/
+
+# Frontend (Next.js) - in 'frontend' subdirectory
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env*.local
+frontend/coverage/
+
+# Backend (Laravel) - in 'backend' subdirectory
+backend/node_modules/
+backend/vendor/
+backend/.env
+backend/storage/*.key
+backend/storage/logs/*.log
+# If you run 'php artisan storage:link', the 'public/storage' is a symlink.
+# It's good practice to ignore it if the actual files are in 'storage/app/public'.
+# If your 'storage/app/public' is empty and 'public/storage' contains actual files
+# that are not generated, then you might reconsider this.
+# For now, assuming standard Laravel setup where 'storage/app/public' is the source.
+backend/public/storage
+backend/public/hot
+backend/.phpunit.result.cache
+backend/Homestead.yaml
+backend/Homestead.json
+backend/.vagrant/

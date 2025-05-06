@@ -3,14 +3,35 @@
 import { useState, useEffect } from "react";
 import Image from "next/image"; // Keep Image for potential weather icons
 
+// Define a more specific type for the weather data
+interface WeatherData {
+  name: string;
+  sys: {
+    country: string;
+  };
+  weather: {
+    icon: string;
+    description: string;
+  }[];
+  main: {
+    temp: number;
+    feels_like: number;
+    temp_min: number;
+    temp_max: number;
+    humidity: number;
+    pressure: number;
+  };
+  wind: {
+    speed: number;
+  };
+  visibility?: number; // Optional, as it might not always be present
+}
+
 export default function Home() {
   const [city, setCity] = useState("");
-  const [weatherData, setWeatherData] = useState<any>(null); // Replace 'any' with a proper type later
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null); // Use the defined interface
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Placeholder for API key - replace with your actual key or a secure way to store it
-  const OPENWEATHERMAP_API_KEY = "YOUR_OPENWEATHERMAP_API_KEY";
 
   const fetchWeatherData = async (cityName: string) => {
     if (!cityName.trim()) {
@@ -18,35 +39,28 @@ export default function Home() {
       setWeatherData(null);
       return;
     }
-    if (OPENWEATHERMAP_API_KEY === "YOUR_OPENWEATHERMAP_API_KEY") {
-      setError("OpenWeatherMap API key is not configured.");
-      setWeatherData(null);
-      return;
-    }
 
     setLoading(true);
     setError(null);
-    setWeatherData(null);
+    setWeatherData(null); // Clear previous data
 
     try {
-      // TODO: Replace with a call to our Laravel backend
-      // For now, directly calling OpenWeatherMap for demonstration (not recommended for production)
+      // Call our Laravel backend API
+      // Assuming backend is running on http://localhost:8000
       const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${OPENWEATHERMAP_API_KEY}&units=metric`
+        `http://localhost:8000/api/weather?city=${encodeURIComponent(cityName)}`
       );
+
+      const data = await response.json(); // Always parse JSON to get error messages from backend
+
       if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error("City not found.");
-        } else if (response.status === 401) {
-          throw new Error("Invalid API key. Please check your OpenWeatherMap API key.");
-        } else {
-          throw new Error(`Failed to fetch weather data: ${response.statusText}`);
-        }
+        // Use the error message from the backend if available, otherwise use a default
+        throw new Error(data.error || `Failed to fetch weather data: ${response.statusText}`);
       }
-      const data = await response.json();
+      
       setWeatherData(data);
     } catch (err: any) {
-      setError(err.message || "An unknown error occurred.");
+      setError(err.message || "An unknown error occurred while fetching data.");
       setWeatherData(null);
     } finally {
       setLoading(false);

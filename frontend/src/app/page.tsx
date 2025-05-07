@@ -27,9 +27,25 @@ interface WeatherData {
   visibility?: number; // Optional, as it might not always be present
 }
 
+// Placeholder for forecast data structure - this will need to be refined
+interface ForecastDay {
+  dt: number;
+  main: {
+    temp: number;
+  };
+  weather: {
+    icon: string;
+    description: string;
+  }[];
+}
+
+interface ForecastData extends WeatherData { // Extends current weather for simplicity, might need dedicated type
+  forecast?: ForecastDay[];
+}
+
 export default function Home() {
   const [city, setCity] = useState("");
-  const [weatherData, setWeatherData] = useState<WeatherData | null>(null); // Use the defined interface
+  const [weatherData, setWeatherData] = useState<ForecastData | null>(null); // Use the defined interface
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +63,7 @@ export default function Home() {
     try {
       // Call our Laravel backend API
       // Assuming backend is running on http://localhost:8000
+      // TODO: Update backend to potentially send forecast data too
       const response = await fetch(
         `http://localhost:8000/api/weather?city=${encodeURIComponent(cityName)}`
       );
@@ -54,11 +71,19 @@ export default function Home() {
       const data = await response.json(); // Always parse JSON to get error messages from backend
 
       if (!response.ok) {
-        // Use the error message from the backend if available, otherwise use a default
         throw new Error(data.error || `Failed to fetch weather data: ${response.statusText}`);
       }
-      
-      setWeatherData(data);
+
+      // For now, manually adding placeholder forecast data until backend is updated
+      // This is just for UI demonstration
+      const placeholderForecast: ForecastDay[] = [
+        { dt: Date.now() / 1000 + 24 * 60 * 60, main: { temp: 22 }, weather: [{ icon: "01d", description: "clear sky" }] },
+        { dt: Date.now() / 1000 + 2 * 24 * 60 * 60, main: { temp: 21 }, weather: [{ icon: "02d", description: "few clouds" }] },
+        { dt: Date.now() / 1000 + 3 * 24 * 60 * 60, main: { temp: 23 }, weather: [{ icon: "01d", description: "clear sky" }] },
+      ];
+
+      setWeatherData({ ...data, forecast: placeholderForecast });
+
     } catch (err: any) {
       setError(err.message || "An unknown error occurred while fetching data.");
       setWeatherData(null);
@@ -72,139 +97,163 @@ export default function Home() {
     fetchWeatherData(city);
   };
 
-  const getCurrentDate = () => {
-    return new Date().toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
+  const getCurrentFormattedDate = () => {
+    return new Date().toLocaleDateString("en-GB", {
       day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const getFormattedForecastDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short", // "May" instead of "long" for brevity in forecast cards
     });
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-4 md:p-12 lg:p-24 bg-base-100 text-base-content">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex mb-8">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-neutral bg-base-300 p-4 backdrop-blur-2xl lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-base-200 lg:p-4">
-          Weather App
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-32 w-full items-end justify-center bg-gradient-to-t from-base-100 via-base-100 lg:static lg:h-auto lg:w-auto lg:bg-none">
-          {/* Placeholder for potential logo or branding */}
-        </div>
-      </div>
-
-      {/* Search Bar */}
+    <div className="min-h-screen p-4 sm:p-6 md:p-8 bg-gradient-to-br from-purple-200 via-indigo-100 to-blue-100 flex flex-col items-center text-gray-700 font-sans">
+      {/* Search Bar Area */}
       <form
         onSubmit={handleSearch}
-        className="w-full max-w-md mb-10 flex gap-2"
+        className="w-full max-w-lg mb-8 mt-4 flex items-center bg-white/90 backdrop-blur-lg shadow-xl rounded-full p-2.5"
       >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6 mx-3 text-gray-400">
+          <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11ZM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9Z" clipRule="evenodd" />
+        </svg>
         <input
           type="text"
           value={city}
           onChange={(e) => setCity(e.target.value)}
-          placeholder="Enter city name..."
-          className="input input-bordered input-primary flex-grow"
+          placeholder="Search"
+          className="input-ghost flex-grow bg-transparent focus:outline-none placeholder-gray-500 text-lg"
+          disabled={loading}
         />
         <button
-          type="submit"
-          className="btn btn-primary"
+          type="button"
+          className="btn btn-circle btn-md bg-purple-500 hover:bg-purple-600 text-white font-bold text-md mr-1 shadow-md"
+          // onClick={() => { /* TODO: Implement C/F toggle */ }}
           disabled={loading}
         >
-          {loading ? (
-            <span className="loading loading-spinner loading-sm"></span>
-          ) : (
-            "Search"
-          )}
+          °C
         </button>
       </form>
 
       {/* Error Display */}
-      {error && (
-        <div className="alert alert-error max-w-md mb-6">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="stroke-current shrink-0 h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M10 14l2-2m0 0l2-2m-2 2l-2 2m2-2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <span>Error! {error}</span>
-        </div>
-      )}
-
-      {/* Weather Display Card */}
-      {weatherData && !error && (
-        <div className="card w-full max-w-2xl bg-base-200 shadow-xl text-base-content">
-          <div className="card-body items-center text-center">
-            <h2 className="card-title text-3xl mb-2">
-              {weatherData.name}, {weatherData.sys.country}
-            </h2>
-            <p className="text-sm mb-4">{getCurrentDate()}</p>
-
-            <div className="flex items-center mb-4">
-              {weatherData.weather[0].icon && (
-                <Image
-                  src={`https://openweathermap.org/img/wn/${weatherData.weather[0].icon}@2x.png`}
-                  alt={weatherData.weather[0].description}
-                  width={100}
-                  height={100}
-                />
-              )}
-              <div>
-                <p className="text-6xl font-bold">
-                  {Math.round(weatherData.main.temp)}°C
-                </p>
-                <p className="text-xl capitalize">
-                  {weatherData.weather[0].description}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-left w-full max-w-md mb-4">
-              <div>
-                <p className="font-semibold">Feels like</p>
-                <p>{Math.round(weatherData.main.feels_like)}°C</p>
-              </div>
-              <div>
-                <p className="font-semibold">Min/Max Temp</p>
-                <p>
-                  {Math.round(weatherData.main.temp_min)}°C /{" "}
-                  {Math.round(weatherData.main.temp_max)}°C
-                </p>
-              </div>
-              <div>
-                <p className="font-semibold">Wind</p>
-                <p>{weatherData.wind.speed} m/s</p>
-              </div>
-              <div>
-                <p className="font-semibold">Humidity</p>
-                <p>{weatherData.main.humidity}%</p>
-              </div>
-              <div>
-                <p className="font-semibold">Pressure</p>
-                <p>{weatherData.main.pressure} hPa</p>
-              </div>
-              {weatherData.visibility && (
-                 <div>
-                   <p className="font-semibold">Visibility</p>
-                   <p>{weatherData.visibility / 1000} km</p>
-                 </div>
-              )}
-            </div>
+      {error && !loading && (
+        <div className="alert alert-error max-w-lg mb-6 shadow-lg text-white bg-red-500/90">
+          <div>
+            <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2 2m2-2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{error}</span>
           </div>
         </div>
       )}
 
-      {!weatherData && !error && !loading && (
-        <div className="text-center text-neutral-content/70">
-          <p>Enter a city to get the latest weather information.</p>
+      {/* Loading State */}
+      {loading && (
+        <div className="flex flex-col items-center justify-center my-10">
+          <span className="loading loading-dots loading-lg text-purple-600"></span>
+          <p className="mt-3 text-lg text-purple-700">Fetching weather...</p>
         </div>
       )}
-    </main>
+
+      {/* Main Content Area - Grid Layout */}
+      {!loading && weatherData && !error && (
+        <div className="w-full max-w-lg grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Left Main Card */}
+          <div className="md:col-span-2 card bg-white/90 backdrop-blur-lg shadow-2xl p-6 rounded-3xl flex flex-col items-center text-center min-h-[360px]">
+            {weatherData.weather[0].icon && (
+              <Image
+                src={`https://openweathermap.org/img/wn/${weatherData.weather[0].icon}@4x.png`}
+                alt={weatherData.weather[0].description}
+                width={150}
+                height={150}
+                className="-mt-10 mb-0" // Pull icon up a bit more
+              />
+            )}
+            <p className="text-7xl font-bold text-gray-800 mt-[-10px]">
+              {Math.round(weatherData.main.temp)}°C
+            </p>
+            <p className="text-2xl text-gray-600 capitalize mb-5">
+              {weatherData.weather[0].description}
+            </p>
+            <div className="w-full bg-white/70 backdrop-blur-sm p-3.5 rounded-xl shadow-inner mt-auto">
+              <p className="text-md font-medium text-gray-700">{getCurrentFormattedDate()}</p>
+              <p className="text-lg font-semibold text-gray-800">{weatherData.name}</p>
+            </div>
+          </div>
+
+          {/* Right Column for Smaller Cards (Forecast) */}
+          <div className="grid grid-rows-3 gap-4">
+            {weatherData.forecast?.map((day, index) => (
+              <div key={index} className="card bg-white/90 backdrop-blur-lg shadow-xl p-3 rounded-2xl flex flex-col items-center justify-center text-center min-h-[113px]">
+                <p className="text-xs font-medium text-gray-500">{getFormattedForecastDate(day.dt)}</p>
+                {day.weather[0].icon && (
+                  <Image
+                    src={`https://openweathermap.org/img/wn/${day.weather[0].icon}@2x.png`}
+                    alt={day.weather[0].description}
+                    width={50}
+                    height={50}
+                  />
+                )}
+                <p className="text-lg font-bold text-gray-800">{Math.round(day.main.temp)}°C</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Wind and Humidity Cards - Below Main Section */}
+      {!loading && weatherData && !error && (
+        <div className="w-full max-w-lg grid grid-cols-2 gap-5 mt-5">
+          {/* Wind Card */}
+          <div className="card bg-white/90 backdrop-blur-lg shadow-xl p-5 rounded-2xl flex flex-col items-center text-center min-h-[150px]">
+            <p className="text-md font-semibold text-gray-500 mb-1">Wind</p>
+            {/* Using a simple wind SVG icon */}
+            <svg className="w-10 h-10 text-purple-500 mb-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 6.75h16.5" filter="url(#wind-blur)" />
+              <defs><filter id="wind-blur"><feGaussianBlur in="SourceGraphic" stdDeviation="0.3" /></filter></defs>
+            </svg>
+            <p className="text-2xl font-bold text-gray-800">
+              {weatherData.wind.speed} <span className="text-sm">m/s</span>
+            </p>
+          </div>
+
+          {/* Humidity Card */}
+          <div className="card bg-white/90 backdrop-blur-lg shadow-xl p-5 rounded-2xl flex flex-col items-center text-center min-h-[150px]">
+            <p className="text-md font-semibold text-gray-500 mb-1">Humidity</p>
+            {/* Using a simple humidity SVG icon */}
+            <svg className="w-10 h-10 text-blue-500 mb-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048l5.962-5.962a.75.75 0 011.06.001z" filter="url(#drop-blur)" />
+              <defs><filter id="drop-blur"><feGaussianBlur in="SourceGraphic" stdDeviation="0.3" /></filter></defs>
+            </svg>
+            <p className="text-2xl font-bold text-gray-800">
+              {weatherData.main.humidity}%
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom location display - as per wireframe */}
+      {!loading && weatherData && !error && (
+        <div className="w-full max-w-lg mt-5 mb-4">
+          <div className="bg-white/90 backdrop-blur-lg shadow-xl p-3.5 rounded-full text-center">
+            <p className="text-md font-semibold text-gray-800">{weatherData.name}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Initial placeholder message */}
+      {!weatherData && !error && !loading && (
+        <div className="text-center mt-10 p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl max-w-md">
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">Welcome to Your Weather App!</h2>
+          <p className="text-gray-600">Enter a city name in the search bar above to get the latest weather information and a 3-day forecast.</p>
+        </div>
+      )}
+    </div>
   );
 }
